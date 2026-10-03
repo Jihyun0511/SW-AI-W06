@@ -14,6 +14,7 @@ Main Files:
 mm.{c,h}	
 	Your solution malloc package. mm.c is the file that you
 	will be handing in, and is the only file you should modify.
+	이 파일만 수정하면 됩니다!
 
 mdriver.c	
 	The malloc driver that tests your mm.c file
