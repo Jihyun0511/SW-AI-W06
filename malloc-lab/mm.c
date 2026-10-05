@@ -1,3 +1,5 @@
+ /* MALLOC LAB::IMPLICIT */ 
+
  /*
     memlib.c 패키지는 동적 메모리 할당기를 위한 메모리 시스템을 시뮬레이션합니다.
     memlib.c에서 다음 함수들을 호출할 수 있습니다.   
@@ -46,12 +48,12 @@ team_t team = {
 #define PACK(size, alloc) ((size) | (alloc))
 
 // 포인터
-#define GET(p)      ((unsigned int *)(p))
-#define PUT(p, val) ((unsigned int *)(p) = (val))
+#define GET(p)      (*(unsigned int *)(p)) // p가 참조하는 워드 리턴
+#define PUT(p, val) (*(unsigned int *)(p) = (val)) // p가 참조하는 워드에 val 저장
 
 // p의 size, alloc 리턴
-#define GET_SIZE(p)  (GET(p) & ~0x7) // 끝 세자리 빼고 뽑아온다
-#define GET_ALLOC(p) (GET(p) & 0x1) // 끝자리만 뽑아온다
+#define GET_SIZE(p)  (GET(p) & ~0x7) // 끝 세자리 빼고 뽑아온다. size 리턴
+#define GET_ALLOC(p) (GET(p) & 0x1) // 끝자리만 뽑아온다. alloc 리턴
 
 // 포인터들 리턴
 #define HDRP(bp)    ((char *)(bp) - WSIZE) // 헤더 포인터 리턴
@@ -65,6 +67,9 @@ team_t team = {
 
 // #define SIZE_T_SIZE (ALIGN(sizeof(size_t)))
 
+// 힙 메모리 포인터 선언
+static char *heap_listp = 0;
+
 /*
     가장 먼저 불려서 초기화 (힙 영역 할당 등)
     문제 발생 시 -1 / 아닐 시 0 반환
@@ -72,16 +77,29 @@ team_t team = {
 int mm_init(void)
 {
     // 초기 공간을 할당한다. 가져올 수 없으면 -1 반환
+    heap_listp = mem_sbrk(4*WSIZE);
+    if (heap_listp == (void *)-1) return -1; // 에러 뜨면...
 
-    // 초기 블록을 만들기용 세팅
-
+    // 초기 블록 만들기용 세팅
+    PUT(heap_listp, 0); // 패딩 만들기
     // 프롤로그 헤더
+    PUT(heap_listp + (1*WSIZE), PACK(DSIZE, 1));
     // 프롤로그 푸터
+    PUT(heap_listp + (2*WSIZE), PACK(DSIZE, 1));
     // 에필로그 헤더
+    PUT(heap_listp + (3*WSIZE), PACK(0, 1));
+    // 포인터를 bp 위치(블록의 데이터 시작점: 프롤로그 헤더/푸터 중간점)로 옮김
+    heap_listp += (2*WSIZE);
 
     // CHUNKSIZE만큼 초기 블록을 만든다
+    
 
     return 0;
+}
+
+static void *extend_heap(size_t words)
+{
+    
 }
 
 /*
@@ -91,15 +109,15 @@ int mm_init(void)
  */
 void *mm_malloc(size_t size)
 {
-    int newsize = ALIGN(size + SIZE_T_SIZE);
-    void *p = mem_sbrk(newsize);
-    if (p == (void *)-1)
-        return NULL;
-    else
-    {
-        *(size_t *)p = size;
-        return (void *)((char *)p + SIZE_T_SIZE);
-    }
+    // int newsize = ALIGN(size + SIZE_T_SIZE);
+    // void *p = mem_sbrk(newsize);
+    // if (p == (void *)-1)
+    //     return NULL;
+    // else
+    // {
+    //     *(size_t *)p = size;
+    //     return (void *)((char *)p + SIZE_T_SIZE);
+    // }
 }
 
 /*
@@ -121,17 +139,17 @@ void mm_free(void *ptr)
  */
 void *mm_realloc(void *ptr, size_t size)
 {
-    void *oldptr = ptr;
-    void *newptr;
-    size_t copySize;
+    // void *oldptr = ptr;
+    // void *newptr;
+    // size_t copySize;
 
-    newptr = mm_malloc(size);
-    if (newptr == NULL)
-        return NULL;
-    copySize = *(size_t *)((char *)oldptr - SIZE_T_SIZE);
-    if (size < copySize)
-        copySize = size;
-    memcpy(newptr, oldptr, copySize);
-    mm_free(oldptr);
-    return newptr;
+    // newptr = mm_malloc(size);
+    // if (newptr == NULL)
+    //     return NULL;
+    // copySize = *(size_t *)((char *)oldptr - SIZE_T_SIZE);
+    // if (size < copySize)
+    //     copySize = size;
+    // memcpy(newptr, oldptr, copySize);
+    // mm_free(oldptr);
+    // return newptr;
 }
