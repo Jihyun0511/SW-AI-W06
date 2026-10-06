@@ -70,6 +70,12 @@ team_t team = {
 // 힙 메모리 포인터 선언
 static char *heap_listp = 0;
 
+// 내부 함수 선언
+static void *extend_heap(size_t words);
+static void *coalesce(void *bp);
+static void *find_fit(size_t asize);
+static void place(void *bp, size_t asize);
+
 /*
     가장 먼저 불려서 초기화 (힙 영역 할당 등)
     문제 발생 시 -1 / 아닐 시 0 반환
@@ -93,7 +99,7 @@ int mm_init(void)
     heap_listp += (2 * WSIZE);
 
     // CHUNKSIZE만큼 초기 블록을 만든다
-    char initBp;
+    char *initBp;
     initBp = extend_heap(CHUNKSIZE / WSIZE);
     // 추가 공간 할당. 실패 시 -1 반환
     if (initBp == NULL) {
