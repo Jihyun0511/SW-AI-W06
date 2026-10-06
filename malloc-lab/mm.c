@@ -178,7 +178,18 @@ void *mm_malloc(size_t size)
 // 묵시적 가용 리스트에서의 first fit 검색
 static void *find_fit(size_t asize)
 {
+    void *bp; // 포인터값이 직접 바뀌면 안 되니까 복사해옴
+    
+    // 블록 크기가 0이면 (에필로그 헤더 만남) 종료
+    for(bp = heap_listp; GET_SIZE(HDRP(bp)) != 0; bp = NEXT_BLKP(bp))
+    {
+        // 가용 블록인지 확인 / 블록 사이즈 확인 (나보다 크거나 같은지)
+        if (!GET_ALLOC(HDRP(bp)) && (asize <= GET_SIZE(HDRP(bp))))
+            return bp;
+    }
 
+    // 맞는 곳 없음
+    return NULL;
 }
 
 /*
