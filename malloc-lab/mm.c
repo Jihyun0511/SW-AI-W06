@@ -266,6 +266,11 @@ static void *coalesce(void *bp)
         bp = PREV_BLKP(bp);
     }
 
+    // 합쳐진 블록 안에 rover가 갇혔다면, rover를 새 블록의 시작점(bp)으로 구출!
+    if ((fit_ptr > (char *)bp) && (fit_ptr < NEXT_BLKP(bp))) {
+        fit_ptr = bp;
+    }
+
     return bp;
 }
 
