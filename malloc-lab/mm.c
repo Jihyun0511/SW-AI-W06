@@ -127,7 +127,7 @@ static void *extend_heap(size_t words)
     // 푸터 생성
     PUT(FTRP(bp), PACK(size, 0));
     // 새 블록 마지막 워드 -> 새 에필로그 헤더
-    PUT(NEXT_BLKP(bp), PACK(0, 1));
+    PUT(HDRP(NEXT_BLKP(bp)), PACK(0, 1));
 
     // 가용 블록 병합
     return coalesce(bp);
