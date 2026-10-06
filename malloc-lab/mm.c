@@ -140,16 +140,6 @@ static void *extend_heap(size_t words)
  */
 void *mm_malloc(size_t size)
 {
-    // int newsize = ALIGN(size + SIZE_T_SIZE);
-    // void *p = mem_sbrk(newsize);
-    // if (p == (void *)-1)
-    //     return NULL;
-    // else
-    // {
-    //     *(size_t *)p = size;
-    //     return (void *)((char *)p + SIZE_T_SIZE);
-    // }
-    
     size_t asize;
     size_t extendize;
     char *bp;
@@ -213,8 +203,8 @@ static void place(void *bp, size_t asize)
         PUT(HDRP(bp), PACK(asize, 1));
         PUT(FTRP(bp), PACK(asize, 1));
         bp = NEXT_BLKP(bp);
-        PUT(HDRP(bp), PACK(csize - asize, 1));
-        PUT(FTRP(bp), PACK(csize - asize, 1));
+        PUT(HDRP(bp), PACK(csize - asize, 0));
+        PUT(FTRP(bp), PACK(csize - asize, 0));
     }
     // 공간이 없으면 그냥 다 주기
     else
@@ -246,27 +236,27 @@ static void *coalesce(void *bp)
     */
     // 앞뒤 블록의 할당 여부 확인
     size_t prev_alloc = GET_ALLOC(FTRP(PREV_BLKP(bp))); // 이전 블록의 푸터 alloc
-    size_t next_alloc = GET_ALLOC(FTRP(PREV_BLKP(bp))); // 이전 블록의 푸터 alloc
+    size_t next_alloc = GET_ALLOC(HDRP(NEXT_BLKP(bp))); // 다음 블록의 헤터 alloc
 
     size_t size = GET_SIZE(HDRP(bp));
 
-    // 이전, 다음 블록 할당 상태 / 병합 X
+    // 1. 이전, 다음 블록 할당 상태 / 병합 X
     if (prev_alloc && next_alloc) return bp;
-    // 이전 블록 할당, 다음 블록 가용 상태 / 다음 블록만 병합
+    // 2. 이전 블록 할당, 다음 블록 가용 상태 / 다음 블록만 병합
     else if (prev_alloc && !next_alloc) {
         size += GET_SIZE(HDRP(NEXT_BLKP(bp))); // 다음 블록 사이즈 더함
         // FRTP는 HDRP를 기준으로 찾기 때문에 HDRP 먼저 해야 함
         PUT(HDRP(bp), PACK(size, 0)); // 헤더 할당 플래그 0으로
         PUT(FTRP(bp), PACK(size, 0)); // 푸터 할당 플래그 0으로 (커진 사이즈 기준으로 맨 끝으로 간다)
     }
-    // 이전 블록 가용, 다음 블록 할당 상태 / 이전 블록만 병합
+    // 3. 이전 블록 가용, 다음 블록 할당 상태 / 이전 블록만 병합
     else if (!prev_alloc && next_alloc) {
         size += GET_SIZE(HDRP(PREV_BLKP(bp))); // 이전 블록 사이즈 더함
         PUT(FTRP(bp), PACK(size, 0));
         PUT(HDRP(PREV_BLKP(bp)), PACK(size, 0)); // 이전 블록 헤더 가져옴
         bp = PREV_BLKP(bp); // 이전 블록 포인터로 갱신
     }
-    // 이전, 다음 블록 가용 상태 / 이전, 다음 블록 모두 병합
+    // 4. 이전, 다음 블록 가용 상태 / 이전, 다음 블록 모두 병합
     else {
         size += GET_SIZE(HDRP(PREV_BLKP(bp))) + GET_SIZE(HDRP(NEXT_BLKP(bp)));
         PUT(HDRP(PREV_BLKP(bp)), PACK(size, 0)); // 이전 블록 헤더 가져옴
@@ -287,17 +277,37 @@ static void *coalesce(void *bp)
  */
 void *mm_realloc(void *ptr, size_t size)
 {
-    // void *oldptr = ptr;
-    // void *newptr;
-    // size_t copySize;
+    void *oldptr = ptr;
+    void *newptr;
+    size_t copySize;
 
-    // newptr = mm_malloc(size);
-    // if (newptr == NULL)
-    //     return NULL;
-    // copySize = *(size_t *)((char *)oldptr - SIZE_T_SIZE);
-    // if (size < copySize)
-    //     copySize = size;
-    // memcpy(newptr, oldptr, copySize);
-    // mm_free(oldptr);
-    // return newptr;
+    // 1. size가 0이면 free와 동일하게 동작
+    if (size == 0) {
+        mm_free(ptr);
+        return NULL;
+    }
+
+    // 2. ptr이 NULL이면 malloc과 동일하게 동작
+    if (ptr == NULL) {
+        return mm_malloc(size);
+    }
+
+    // 3. 새로운 공간 할당
+    newptr = mm_malloc(size);
+    if (newptr == NULL)
+        return NULL;
+
+    // 4. 이전 데이터 복사 (핵심!)
+    // GET_SIZE로 원래 블록의 전체 크기를 구한 뒤, 헤더/푸터 크기(DSIZE)를 빼서 순수 데이터 크기만 복사
+    copySize = GET_SIZE(HDRP(oldptr)) - DSIZE; 
+    
+    if (size < copySize)
+        copySize = size; // 만약 더 작은 크기로 줄이는 거라면 넘치지 않게 자름
+    
+    memcpy(newptr, oldptr, copySize); // 새 공간으로 데이터 이사
+    
+    // 5. 이사 끝났으니 기존 방 빼기
+    mm_free(oldptr);
+    
+    return newptr;
 }
