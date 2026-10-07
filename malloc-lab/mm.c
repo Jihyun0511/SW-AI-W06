@@ -69,8 +69,6 @@ team_t team = {
 
 // 힙 메모리 포인터 선언
 static char *heap_listp = 0;
-// fit ptr 선언
-static char *fit_ptr;
 
 // 내부 함수 선언
 static void *extend_heap(size_t words);
@@ -108,7 +106,6 @@ int mm_init(void)
         return -1; // 에러 뜨면...
     }
 
-    fit_ptr = heap_listp;
     return 0;
 }
 
@@ -264,11 +261,6 @@ static void *coalesce(void *bp)
         PUT(HDRP(PREV_BLKP(bp)), PACK(size, 0)); // 이전 블록 헤더 가져옴
         PUT(FTRP(NEXT_BLKP(bp)), PACK(size, 0)); // 다음 블록 푸터 가져옴
         bp = PREV_BLKP(bp);
-    }
-
-    // 합쳐진 블록 안에 rover가 갇혔다면, rover를 새 블록의 시작점(bp)으로 구출!
-    if ((fit_ptr > (char *)bp) && (fit_ptr < NEXT_BLKP(bp))) {
-        fit_ptr = bp;
     }
 
     return bp;
