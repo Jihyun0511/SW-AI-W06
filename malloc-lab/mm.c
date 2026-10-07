@@ -172,7 +172,9 @@ void mm_free(void *bp)
 
  * mm_realloc - Implemented simply in terms of mm_malloc and mm_free
  */
-void *mm_realloc(void *ptr, size_t size){
+
+ /*
+ void *mm_realloc(void *ptr, size_t size){
     void *oldptr = ptr;
     void *newptr;
     size_t copySize;
@@ -204,6 +206,58 @@ void *mm_realloc(void *ptr, size_t size){
     
     // 5. 이사 끝났으니 기존 방 빼기
     mm_free(oldptr);
+    
+    return newptr;
+}
+*/
+
+void *mm_realloc(void *ptr, size_t size)
+{
+    if (size == 0) {
+        mm_free(ptr);
+        return NULL;
+    }
+    if (ptr == NULL) {
+        return mm_malloc(size);
+    }
+
+    void *newptr;
+    size_t old_size = GET_SIZE(HDRP(ptr));
+    
+    // 1. 새로 요청한 크기를 블록 정렬 기준에 맞춤 (malloc의 asize 계산과 동일)
+    size_t asize;
+    if (size <= DSIZE) asize = 2 * DSIZE;
+    else asize = ALIGN(size + DSIZE);
+
+    // 2. 이미 기존 방이 충분히 크다면? 아무것도 안 하고 그냥 그대로 살면 됨
+    if (asize <= old_size) {
+        return ptr;
+    }
+
+    // 3. 방을 넓혀야 하는데, 마침 바로 다음 블록이 비어있고 둘을 합치면 크기가 충분한가?
+    size_t next_alloc = GET_ALLOC(HDRP(NEXT_BLKP(ptr)));
+    size_t next_size = GET_SIZE(HDRP(NEXT_BLKP(ptr)));
+
+    if (!next_alloc && (old_size + next_size >= asize)) {
+        // 벽을 허물고 두 방을 하나로 합침 (헤더와 푸터 갱신)
+        size_t combined_size = old_size + next_size;
+        PUT(HDRP(ptr), PACK(combined_size, 1));
+        PUT(FTRP(ptr), PACK(combined_size, 1));
+        
+        // 🚨 Next Fit 전용 방어 코드: 하필 fit_ptr이 먹혀버린 다음 블록을 가리키고 있었다면 안전한 곳으로 대피
+        if (fit_ptr == NEXT_BLKP(ptr)) {
+            fit_ptr = ptr; 
+        }
+        
+        return ptr; // 이사 가지 않고 그대로 반환 (속도, 공간 모두 떡상!)
+    }
+
+    // 4. 옆방도 사용 중이거나 합쳐도 좁다면, 어쩔 수 없이 눈물을 머금고 새 방을 구해 이사
+    newptr = mm_malloc(size);
+    if (newptr == NULL) return NULL;
+    
+    memcpy(newptr, ptr, old_size - DSIZE);
+    mm_free(ptr);
     
     return newptr;
 }
