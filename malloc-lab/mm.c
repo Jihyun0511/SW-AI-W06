@@ -274,29 +274,28 @@ static void *coalesce(void *bp)
     return bp;
 }
 
-// 묵시적 가용 리스트에서의 next fit 검색
+// 묵시적 가용 리스트에서의 best fit 검색
 static void *find_fit(size_t asize)
 {
-    void *bp = fit_ptr; // 기존 포인터값 기억해두기
+    void *bp; // 기존 포인터값 기억해두기
+    void *best_bp = NULL; 
     
-    // fit_ptr 부터 끝까지 검색
-    for(; GET_SIZE(HDRP(fit_ptr)) != 0; fit_ptr = NEXT_BLKP(fit_ptr))
+    // 처음부터 끝까지 검색
+    for(bp = heap_listp; GET_SIZE(HDRP(bp)) != 0; bp = NEXT_BLKP(bp))
     {
         // 가용 블록인지 확인 / 블록 사이즈 확인 (나보다 크거나 같은지)
-        if (!GET_ALLOC(HDRP(fit_ptr)) && (asize <= GET_SIZE(HDRP(fit_ptr))))
-            return fit_ptr;
+        if (!GET_ALLOC(HDRP(bp)) && (asize <= GET_SIZE(HDRP(bp))))
+        {
+            // best_bp 가 비어있거나 / 기존 best_bp보다 bp가 더 작다면 (더 맞음) 갱신
+            // if (best_bp == NULL || GET_SIZE(HDRP(bp)) < GET_SIZE(HDRP(best_bp)))
+            // {
+            //     best_bp = bp;
+            // }
+            best_bp = bp;
+            
+        }
     }
-
-    // 끝까지 갔는데 없으면 처음부터 기존 fit_ptr 자리까지 검색
-    for(fit_ptr = heap_listp; fit_ptr < bp; fit_ptr = NEXT_BLKP(fit_ptr))
-    {
-        // 가용 블록인지 확인 / 블록 사이즈 확인 (나보다 크거나 같은지)
-        if (!GET_ALLOC(HDRP(fit_ptr)) && (asize <= GET_SIZE(HDRP(fit_ptr))))
-            return fit_ptr;
-    }
-
-    // 맞는 곳 없음
-    return NULL;
+    return best_bp;
 }
 
 /*
