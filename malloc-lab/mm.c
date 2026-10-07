@@ -277,7 +277,7 @@ static void *coalesce(void *bp)
 // 묵시적 가용 리스트에서의 best fit 검색
 static void *find_fit(size_t asize)
 {
-    void *bp; // 기존 포인터값 기억해두기
+    void *bp;
     void *best_bp = NULL; 
     
     // 처음부터 끝까지 검색
@@ -287,12 +287,15 @@ static void *find_fit(size_t asize)
         if (!GET_ALLOC(HDRP(bp)) && (asize <= GET_SIZE(HDRP(bp))))
         {
             // best_bp 가 비어있거나 / 기존 best_bp보다 bp가 더 작다면 (더 맞음) 갱신
-            // if (best_bp == NULL || GET_SIZE(HDRP(bp)) < GET_SIZE(HDRP(best_bp)))
-            // {
-            //     best_bp = bp;
-            // }
-            best_bp = bp;
-            
+            if (best_bp == NULL || GET_SIZE(HDRP(bp)) < GET_SIZE(HDRP(best_bp)))
+            {
+                best_bp = bp;
+                
+                // 사이즈 딱 맞으면 바로 종료
+                if (GET_SIZE(HDRP(bp)) == asize) {
+                    return best_bp;
+                }
+            }
         }
     }
     return best_bp;
