@@ -249,7 +249,7 @@ void *mm_realloc(void *ptr, size_t size)
             fit_ptr = ptr; 
         }
         
-        return ptr; // 이사 가지 않고 그대로 반환 (속도, 공간 모두 떡상!)
+        return ptr; // 이사 가지 않고 그대로 반환
     }
 
     // 4. 옆방도 사용 중이거나 합쳐도 좁다면, 어쩔 수 없이 눈물을 머금고 새 방을 구해 이사
